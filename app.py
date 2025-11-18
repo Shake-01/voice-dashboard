@@ -1,29 +1,41 @@
 import streamlit as st
+from st_audio_recorder import st_audio_recorder
 import speech_recognition as sr
+import tempfile
 
-st.title("🎤 Voice Notepad")
+st.title("🎤 Voice Notepad (Streamlit Cloud Compatible)")
 
-#session state to store transcribe
+# Session state for notes
 if "notes" not in st.session_state:
-  st.session_state.notes = ""
+    st.session_state.notes = ""
 
-#create a recognizer
-recognizer = sr.Recognizer()
+st.write("Click below and speak:")
 
-#button to record audio
-if st.button("Start Recording"):
-  with sr.Micrphone() as source:
-    st.write("Listening...")
-    audio = recognizer.listen(source)
+# Record audio through browser
+audio_data = st_audio_recorder()
 
-  try: 
-    text = recognizer.recognize_google(audio)
-    st.session_state.notes += text + "/n"
-    st.success(f"Recorded: {text}")
+# If the user recorded audio
+if audio_data is not None:
+    st.success("Audio recorded!")
 
-  except:
-    st.error("Sorry, I couldn't understand.")
+    # Save audio to temp file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
+        f.write(audio_data)
+        audio_file_path = f.name
 
-#display notes
-st.text_area("Your Notes:", st.session_state.notes, height=300)
-    
+    # Transcribe using SpeechRecognition
+    recognizer = sr.Recognizer()
+    with sr.AudioFile(audio_file_path) as source:
+        audio = recognizer.record(source)
+
+    try:
+        text = recognizer.recognize_google(audio)
+        st.session_state.notes += text + "\n"
+        st.write(f"**Transcribed:** {text}")
+
+    except Exception as e:
+        st.error("Could not transcribe audio.")
+
+# Show notes
+st.text_area("📝 Your Notes:", st.session_state.notes, height=300)
+
